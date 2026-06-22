@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ThermaLink | EnEfG Waste Heat Routing & Zoning Simulator</title>
+    <meta name="description" content="ThermaLink is an interactive 3D isometric simulation dashboard for auditing and planning data center waste heat export under the German Energy Efficiency Act (EnEfG).">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Top Dashboard Header -->
+    <header class="dashboard-header">
+        <div class="header-branding">
+            <div class="branding-orb"></div>
+            <div>
+                <h1>ThermaLink</h1>
+                <span class="branding-sub">EnEfG Digital Twin & Audit Console</span>
+            </div>
+        </div>
+        <div class="header-status">
+            <div class="status-indicator">
+                <span class="pulse-dot"></span>
+                <span>Frankfurt Grid Loop: Active</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Grid Dashboard Layout (PowerBI Style Columns) -->
+    <div class="dashboard-layout">
+        
+        <!-- Left Panel: Parameters & Filters (SaaS sidebar style) -->
+        <aside class="sidebar-panel" aria-label="Simulation Settings">
+            <div class="panel-section">
+                <h2 class="section-title">🏭 Co-Location Zoning</h2>
+                <p class="section-desc">Select nodes to route connection.</p>
+                
+                <div class="control-group">
+                    <label for="select-dc">Data Center Source</label>
+                    <select id="select-dc" class="dropdown-input">
+                        <option value="SOSSENHEIM">Sossenheim Hub (25 MW | 32°C)</option>
+                        <option value="GALLUS">Gallus Hub (15 MW | 35°C)</option>
+                        <option value="FECHENHEIM">Fechenheim Hub (40 MW | 30°C)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="select-junction">Heating Loop Junction</label>
+                    <select id="select-junction" class="dropdown-input">
+                        <option value="JUNCTION_WEST">Mainova West Feed Loop (80°C)</option>
+                        <option value="JUNCTION_NORTH">Mainova North Loop Junction (75°C)</option>
+                        <option value="JUNCTION_CITY">City Main Loop Feed (85°C)</option>
+                        <option value="JUNCTION_EAST">Fechenheim Industrial Loop (70°C)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h2 class="section-title">⚙️ Operating Inputs</h2>
+                
+                <div class="control-group">
+                    <label for="slider-heat-power">Waste Heat Capacity: <span id="val-heat-power">15</span> MW</label>
+                    <input type="range" id="slider-heat-power" min="5" max="50" value="15" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label for="slider-target-temp">Condenser Boost Target: <span id="val-target-temp">80</span> °C</label>
+                    <input type="range" id="slider-target-temp" min="65" max="95" value="80" step="5">
+                </div>
+
+                <div class="control-group">
+                    <label for="select-pipe-insulation">Pipeline Insulation Class</label>
+                    <select id="select-pipe-insulation" class="dropdown-input">
+                        <option value="0.24">DN100 standard insulation (U: 0.24 W/mK)</option>
+                        <option value="0.16">DN100 double-insulation (U: 0.16 W/mK)</option>
+                        <option value="0.32">DN100 low-grade pipe (U: 0.32 W/mK)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="slider-ground-temp">Soil Temp (Seasonal): <span id="val-ground-temp">10</span> °C</label>
+                    <input type="range" id="slider-ground-temp" min="0" max="20" value="10" step="2">
+                </div>
+
+                <div class="control-group">
+                    <label for="slider-grid-carbon">Grid Carbon Intensity: <span id="val-grid-carbon">380</span> g/kWh</label>
+                    <input type="range" id="slider-grid-carbon" min="50" max="600" value="380" step="10">
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center Panel: Live 3D Map Canvas & Path Stats -->
+        <main class="main-map-panel">
+            <div class="canvas-container-3d">
+                <div class="canvas-tag">3D ISOMETRIC MUNICIPAL MAP</div>
+                <canvas id="isometric-canvas"></canvas>
+                
+                <div class="map-overlay-instructions">
+                    🖱️ Click nodes on the 3D map to recalculate paths and audit thermodynamics.
+                </div>
+            </div>
+
+            <!-- Route and Construction stats (Horizontal card bar) -->
+            <div class="route-stats-bar">
+                <div class="stat-item" id="stat-pipe-length">
+                    <span class="stat-label">Pipeline Length</span>
+                    <span class="stat-val" id="val-pipe-length">0 m</span>
+                </div>
+                <div class="stat-item" id="stat-pipe-capex">
+                    <span class="stat-label">Construction CAPEX</span>
+                    <span class="stat-val text-orange" id="val-pipe-capex">€0</span>
+                </div>
+                <div class="stat-item" id="stat-delivered-temp">
+                    <span class="stat-label">Delivered Temp</span>
+                    <span class="stat-val" id="val-delivered-temp">0.0 °C</span>
+                </div>
+                <div class="stat-item" id="stat-temp-loss">
+                    <span class="stat-label">Thermal Loss</span>
+                    <span class="stat-val text-red" id="val-temp-loss">0.0 °C</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Panel: PowerBI Reporting Sheet (HUD Gauges & Audits) -->
+        <section class="reporting-panel" aria-label="Energy Reports">
+            
+            <!-- Audit Report Compliance Card -->
+            <div class="report-card card-compliance" id="card-regulatory-audit">
+                <div class="card-header">
+                    <h3 class="card-title">🛡️ EnEfG Compliance Audit</h3>
+                    <span class="grade-badge grade-fail" id="val-grade">FAIL</span>
+                </div>
+                <div class="compliance-reason" id="val-reason">
+                    No active route selected. Click a Data Center and a Junction on the map.
+                </div>
+            </div>
+
+            <!-- Key Performance Scorecards -->
+            <div class="scorecard-group">
+                
+                <!-- Scorecard: Carbon Balance -->
+                <div class="report-card">
+                    <span class="card-label">Annual Net Carbon Saving</span>
+                    <div class="val-group">
+                        <span class="large-val" id="val-net-carbon">0</span>
+                        <span class="val-unit">Tonnes CO₂e</span>
+                    </div>
+                    <div class="subtext-container">
+                        <span>displaces gas combustion</span>
+                    </div>
+                </div>
+
+                <!-- Scorecard: Heat Pump COP -->
+                <div class="report-card">
+                    <div class="cop-card-row">
+                        <div>
+                            <span class="card-label">Heat Pump Efficiency</span>
+                            <div class="val-group">
+                                <span class="large-val" id="val-cop">1.0</span>
+                                <span class="val-unit">COP</span>
+                            </div>
+                        </div>
+                        
+                        <!-- SVG Radial Gauge for COP -->
+                        <div class="gauge-container">
+                            <svg class="radial-gauge" viewBox="0 0 36 36">
+                                <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path class="gauge-fill" id="fill-cop-gauge" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Carbon Offset Bar chart (visual comparison) -->
+                <div class="report-card">
+                    <span class="card-label">Annual Emissions Trade-off</span>
+                    <div class="offset-bar-chart">
+                        <div class="offset-bar-row">
+                            <div class="offset-bar-info">
+                                <span>CO₂ Displaced (Gas Boilers)</span>
+                                <span id="val-offset-displaced">0 t</span>
+                            </div>
+                            <div class="offset-track">
+                                <div class="offset-fill bg-green" id="bar-offset-displaced" style="width: 0%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="offset-bar-row" style="margin-top: 0.75rem;">
+                            <div class="offset-bar-info">
+                                <span>CO₂ Emitted (Grid Electric)</span>
+                                <span id="val-offset-emitted">0 t</span>
+                            </div>
+                            <div class="offset-track">
+                                <div class="offset-fill bg-red" id="bar-offset-emitted" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Temperature Drop line chart projection -->
+                <div class="report-card">
+                    <span class="card-label">Temperature Decay Curve</span>
+                    <div class="decay-chart-container">
+                        <svg class="decay-svg" id="decay-svg-graph" viewBox="0 0 200 60">
+                            <!-- SVG elements dynamically loaded by JavaScript -->
+                            <path class="decay-line" d="M0,0" id="decay-svg-path" />
+                            <circle class="decay-dot" cx="0" cy="0" r="3" id="decay-svg-dot" />
+                        </svg>
+                        <div class="decay-axis-labels">
+                            <span>0m</span>
+                            <span id="val-decay-axis-mid">1.2km</span>
+                            <span id="val-decay-axis-end">2.4km</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </div>
+
+    <!-- UI Core Scripts -->
+    <script src="thermo.js"></script>
+    <script src="routing.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
