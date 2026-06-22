@@ -1,14 +1,14 @@
 # ThermaLink ⚡
 
-ThermaLink is an interactive **3D isometric waste heat routing and zoning simulator** modeled to look like a premium enterprise PowerBI reporting sheet. 
+This is an interactive **waste heat routing and zoning simulator** built as a companion digital twin for my Master's Thesis on data center heat recovery in Germany. 
 
-It maps actual data center clusters in Frankfurt, Germany (Sossenheim, Gallus, Fechenheim) and audits connection options to Mainova's district heating network under the German **Energy Efficiency Act (EnEfG)**.
+The tool models the physical and economic feasibility of connecting data center waste heat sources (like loops in Sossenheim or Gallus) to municipal district heating networks (Mainova) to audit their compliance with the German **Energy Efficiency Act (EnEfG)**.
 
 ---
 
 ## Live Demo
-Once published to GitHub Pages, your dashboard will be viewable publicly at:
-`https://Abhishektegur.github.io/thermalink/`
+The interactive dashboard is hosted live on GitHub Pages:
+👉 **[abhishektegur.github.io/thermalink/thermalink/](https://abhishektegur.github.io/thermalink/thermalink/)**
 
 ---
 
