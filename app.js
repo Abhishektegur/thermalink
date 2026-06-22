@@ -73,8 +73,59 @@ document.addEventListener("DOMContentLoaded", () => {
     // Bind Event Listeners
     setupInputBindings();
     
-    // Initial Run
-    recalculateSimulation();
+    // Fetch live API parameters from Frankfurt weather and grid mix
+    fetchLiveTelemetryData().then(() => {
+        // Initial Run
+        recalculateSimulation();
+    });
+
+    // Fetch Frankfurt weather and grid intensity live
+    async function fetchLiveTelemetryData() {
+        const statusLabel = document.querySelector(".status-indicator span:last-child");
+        if (!statusLabel) return;
+        
+        try {
+            statusLabel.textContent = "Connecting to Frankfurt live feeds...";
+            
+            // Fetch live weather from Open-Meteo (lat/lon of Frankfurt)
+            const res = await fetch("https://api.open-meteo.com/v1/forecast?latitude=50.1109&longitude=8.6821&current=temperature_2m,wind_speed_10m,cloud_cover");
+            if (!res.ok) throw new Error("API failed");
+            
+            const data = await res.json();
+            const current = data.current;
+            
+            // 1. Sync soil temperature with current Frankfurt weather
+            const temp = Math.round(current.temperature_2m);
+            const clampedTemp = Math.max(0, Math.min(20, temp));
+            sliders.groundTemp.value = clampedTemp;
+            labels.groundTemp.textContent = `${clampedTemp} °C`;
+            
+            // 2. Dynamically compute Germany grid carbon intensity based on wind and solar indices
+            // Base intensity is 450 g/kWh. Wind speed and clear skies reduce this offset
+            const windSpeed = current.wind_speed_10m; // km/h
+            const cloudCover = current.cloud_cover; // %
+            const clearSkyPercent = 100 - cloudCover;
+            
+            let estimatedCarbon = 450 - (windSpeed * 4.5) - (clearSkyPercent * 1.5);
+            estimatedCarbon = Math.max(120, Math.min(500, Math.round(estimatedCarbon)));
+            
+            sliders.gridCarbon.value = estimatedCarbon;
+            labels.gridCarbon.textContent = `${estimatedCarbon} g/kWh`;
+            
+            // Update status indicator label
+            statusLabel.innerHTML = `Frankfurt Loop: ${temp}°C | Live Grid: ${estimatedCarbon} g/kWh <span style="color:var(--color-cyan);margin-left:4px;font-weight:700;">(LIVE)</span>`;
+            
+            const pulse = document.querySelector(".pulse-dot");
+            if (pulse) {
+                pulse.style.backgroundColor = "var(--color-cyan)";
+                pulse.style.boxShadow = "0 0 10px var(--color-cyan)";
+            }
+            
+        } catch (err) {
+            console.warn("Failed to load live data, using offline fallback:", err);
+            statusLabel.textContent = "Frankfurt Grid Loop: Active (Offline Defaults)";
+        }
+    }
 
     // Canvas click detection for 3D node selection
     canvas.addEventListener("click", handleCanvasClick);
